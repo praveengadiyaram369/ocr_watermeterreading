@@ -1,0 +1,205 @@
+#include<iostream>
+#include<fstream>
+#include <opencv2/opencv.hpp>
+#include "deskew.h"
+using namespace std;
+using namespace cv;
+
+
+
+
+int main()
+{
+	string src = "C:/Users/praveen_gadi/Documents/watermeter.jpg";
+	Mat im = imread(src);
+	Mat gray;
+
+
+	cvtColor(im, gray, CV_BGR2GRAY);
+
+	Mat preprocessed = preprocess2(gray);
+	//imshow("preprocessed2", preprocessed);
+	double skew;
+	hough_transform(preprocessed, im, &skew);
+	Mat rotated = rot(im, skew* CV_PI / 180);
+
+	Mat  cropped(rotated, Rect(248, 398, 352, 102));
+	imshow("croppedimage", cropped);
+
+
+
+	Mat train_data, label_data;
+	FileStorage data("trainingdataforknn.yml", FileStorage::READ);
+	data["trainingdata"] >> train_data;
+	data.release();
+	FileStorage label("labeldataforknn.yml", FileStorage::READ);
+	label["labeldata"] >> label_data;
+	label.release();
+
+	KNearest knn;
+	knn.train(train_data, label_data);
+	cout << "Training compleated.....!!" << "\n";
+
+
+	Mat img = cropped, img2, img3, img4, img5, img6, img7, tmp1, tmp2, crop;
+	int r = img.rows, c = img.cols;
+	Mat bin(r, c, CV_8UC1, Scalar(0)), bin2;
+	vector<Point> points;
+	Point point_start, point_end, blob_end;
+	cvtColor(img, img2, CV_BGR2GRAY);
+	threshold(img2, img5, 32, 255, THRESH_BINARY);
+	int i, j, contour_count = 0, blob_start = 0;
+
+
+
+
+	for (size_t i = 0; i < r; i++)
+	{
+		for (size_t j = 0; j < c; j++)
+		{
+			Vec3b v = img.at<Vec3b>(i, j);
+			if (v[0]<63 && v[0]>6 && v[1]<59 && v[1]>4 && v[2] >69 && v[2] < 198)
+				bin.at<uchar>(i, j) = (uchar)0;
+			else
+				bin.at<uchar>(i, j) = (uchar)255;
+		}
+	}
+	//erode(bin, bin2, Mat(), Point(-1, -1), 1);
+
+
+
+
+
+	for (i = 0; i < img5.cols; i++)
+	{
+		int count = 0;
+		for (j = 0; j < img5.rows; j++)
+		{
+			if (img5.at<uchar>(j, i) == 0)
+			{
+				if (count == 0)
+					point_start = { i - 3, j - 3 };
+
+				else
+					point_end = { i + 3, j + 3 };
+
+				count++;
+
+			}
+
+		}
+
+		if (count >55)
+		{
+			if (blob_start == 0)
+			{
+				points.push_back(point_start);
+				blob_start = 1;
+			}
+			else
+			{
+				blob_end = point_end;
+			}
+
+		}
+		else
+		{
+			if (blob_start)
+			{
+				points.push_back(blob_end);
+				blob_start = 0;
+			}
+		}
+	}
+
+
+
+	for (int i = 0; i < points.size(); i += 2)
+		rectangle(img5, points[i], points[i + 1], Scalar(255), -1);
+
+
+	dilate(img5, img4, Mat(), Point(-1, -1), 1);
+	erode(img4, img3, Mat(), Point(-1, -1), 1);
+	//img3 = img5;
+
+	for (size_t i = 0; i < r; i++)
+	{
+		for (size_t j = 0; j < c; j++)
+		{
+
+			if (bin.at<uchar>(i, j) == 0)
+				img3.at<uchar>(i, j) = (uchar)0;
+		}
+	}
+
+
+
+	img3.copyTo(img6);
+
+	vector<vector<Point>> contours;
+	vector<Vec4i> heirarchy;
+	findContours(img3, contours, heirarchy, CV_RETR_LIST, CV_CHAIN_APPROX_SIMPLE, Point(0, 0));
+	for (int i = 0; i < contours.size(); i++)
+	{
+		if (contourArea(contours[i]) < 200)
+		{
+			Rect r = boundingRect(contours[i]);
+			rectangle(img6, Point(r.x, r.y), Point(r.x + r.width, r.y + r.height), Scalar(255), -1);
+		}
+	}
+
+
+
+
+
+	erode(img6, img7, Mat(), Point(-1, -1), 1);
+	img7.copyTo(tmp2);
+	contours.clear();
+	heirarchy.clear();
+	findContours(img3, contours, heirarchy, CV_RETR_LIST, CV_CHAIN_APPROX_SIMPLE, Point(0, 0));
+	for (int k = 0; k < contours.size(); k++)
+	{
+		string str = "";
+		if (contourArea(contours[k]) > 200 && contourArea(contours[k]) <2000)
+		{
+			Rect r = boundingRect(contours[k]);
+			rectangle(img, Point(r.x, r.y), Point(r.x + r.width, r.y + r.height), Scalar(0, 0, 255), 2);
+			crop = tmp2(r);
+			resize(crop, tmp1, Size(16, 16), 0, 0, INTER_LINEAR);
+			Mat tmp3(16, 16, CV_8UC1, Scalar(0));
+			for (int l = 0; l < 16; l++)
+			{
+				for (int m = 0; m < 16; m++)
+				{
+					int a = tmp1.at<uchar>(l, m);
+					if (a == 255)
+						tmp3.at<uchar>(l, m) = (uchar)1;
+					else
+						tmp3.at<uchar>(l, m) = (uchar)0;
+				}
+			}
+			Mat abc = tmp3.reshape(1, 1), def;
+			abc.convertTo(def, CV_32FC1);
+			char ch = knn.find_nearest(def, 1);
+			cout << "\n" << ch << "\n";
+			str += ch;
+			putText(img, str, Point(r.x, r.y + r.height), 0, 1, Scalar(0, 255, 0), 1, 8);
+		}
+
+	}
+	imwrite("C:/Users/praveen_gadi/Pictures/ocrknn/watermeter3.jpg", img7);
+	imwrite("C:/Users/praveen_gadi/Pictures/ocrknn/watermeter6.jpg", img);
+	imshow("image", img);
+	imshow("image3", img3);
+	//imshow("image4", img4);
+	imshow("image5", img5);
+	imshow("image6", img6);
+	imshow("image7", img7);
+	imshow("binimage", bin);
+
+
+
+	waitKey(0);
+	return 0;
+}
+

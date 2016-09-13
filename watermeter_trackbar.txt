@@ -1,0 +1,132 @@
+#include<iostream>
+#include<fstream>
+#include <opencv2/opencv.hpp>
+
+using namespace std;
+using namespace cv;
+
+int red_min = 0, red_max = 255, blue_min = 0, blue_max = 255, green_min = 0, green_max = 255;
+void createtrackbars()
+{
+	namedWindow("trackwindow", CV_WINDOW_AUTOSIZE);
+
+	createTrackbar("red_min", "trackwindow", &red_min, 255);
+	createTrackbar("red_max", "trackwindow", &red_max, 255);
+	createTrackbar("blue_min", "trackwindow", &blue_min, 255);
+	createTrackbar("blue_max", "trackwindow", &blue_max, 255);
+	createTrackbar("green_min", "trackwindow", &green_min, 255);
+	createTrackbar("green_max", "trackwindow", &green_max, 255);
+
+}
+
+int main()
+{
+	Mat img = imread("C:/Users/praveen_gadi/Pictures/ocrknn/watermeter.jpg"), img2, img3, img4, img5;
+	int r = img.rows, c = img.cols;
+	Mat bin(r, c, CV_8UC1, Scalar(0));
+	vector<Point> points;
+	cvtColor(img, img2, CV_BGR2GRAY);
+	//threshold(img2, img3, 32, 255, THRESH_BINARY);
+	createtrackbars();
+	while (true)
+	{
+		for (size_t i = 0; i < r; i++)
+		{
+			for (size_t j = 0; j < c; j++)
+			{
+				Vec3b v = img.at<Vec3b>(i, j);
+				if (v[0]<63 && v[0]>6 && v[1]<59 && v[1]>4 && v[2] >69 && v[2] < 198)
+					bin.at<uchar>(i, j) = (uchar)255;
+				else
+					bin.at<uchar>(i, j) = (uchar)0;
+			}
+		}
+		imshow("image", img);
+		imshow("image3", bin);
+	waitKey(10);
+	}
+	
+	
+	/*bitwise_not(img3, img4);
+	for (int i = 0; i < img4.rows; i++)
+	{
+		for (int j = 0; j < img4.cols; j++)
+		{
+			if (img4.at<uchar>(i, j) != 0)
+				points.push_back(Point(i, j));
+		}
+	}
+	RotatedRect box = minAreaRect(points);
+	Mat after_rotation = getRotationMatrix2D(box.center, 4, 1), rotated;
+	warpAffine(img4, rotated, after_rotation, img4.size(), INTER_CUBIC);
+
+	bitwise_not(rotated, img5);
+
+	int i, j;
+	points.clear();
+
+	int blob_start = 0;
+	Point point_start, point_end, blob_end;
+
+	for (i = 0; i < img5.cols; i++)
+	{
+		int count = 0;
+
+		for (j = 0; j < img5.rows; j++)
+		{
+			if (img5.at<uchar>(j, i) == 0)
+			{
+				if (count == 0)
+					point_start = { i - 2, j - 2 };
+
+				else
+					point_end = { i + 1, j + 1 };
+
+				count++;
+
+			}
+
+		}
+
+		if (count >55)
+		{
+			if (blob_start == 0)
+			{
+				points.push_back(point_start);
+				blob_start = 1;
+			}
+			else
+			{
+				blob_end = point_end;
+			}
+
+		}
+		else
+		{
+			if (blob_start)
+			{
+				points.push_back(blob_end);
+				blob_start = 0;
+			}
+		}
+
+		cout << count << "\n";
+	}
+
+
+
+	for (int i = 0; i < points.size(); i += 2)
+		rectangle(img5, points[i], points[i + 1], Scalar(255), -1);*/
+
+	imwrite("C:/Users/praveen_gadi/Pictures/ocrknn/watermeter2.jpg", img5);
+	imshow("image", img);
+	imshow("image3", img3);
+	//imshow("image4", img4);
+	//imshow("image5", img5);
+	//imshow("rotated", rotated);
+
+	
+	waitKey(0);
+	return 0;
+}
+

@@ -1,0 +1,64 @@
+#include<iostream>
+#include<fstream>
+#include <opencv2/opencv.hpp>
+using namespace std;
+using namespace cv;
+
+int main()
+{
+	string trainingdata = "C:/Users/praveen_gadi/Pictures/trainingdata.txt";
+	string image = "C:/Users/praveen_gadi/Pictures/ocrknn/";
+	char ch[] = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' };
+	int t = 1;
+	Mat train_data, label_data;
+	while (t <= 10)
+	{
+		string imageread = "";
+		imageread = image + ch[t - 1] + ".png";
+		cout << t - 1 << "\n";
+		Mat img = imread(imageread, 1), img1, img2, tmp1, tmp2, crop;
+		cvtColor(img, img1, CV_RGB2GRAY);
+		threshold(img1, img2, 200, 255, THRESH_BINARY);
+		img2.copyTo(tmp2);
+		vector<vector<Point>> contours;
+		vector<Vec4i> heirarchy;
+		findContours(img2, contours, heirarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0));
+		for (int i = 1; i < contours.size() && i>0; i = heirarchy[i][0])
+		{
+
+			Rect r = boundingRect(contours[i]);
+			//rectangle(img, Point(r.x, r.y), Point(r.x + r.width, r.y + r.height), Scalar(0, 0, 255), 2);
+			crop = tmp2(r);
+			resize(crop, tmp1, Size(16, 16), 0, 0, INTER_LINEAR);
+			Mat tmp3(16, 16, CV_8UC1, Scalar(0));
+			for (int l = 0; l < 16; l++)
+			{
+				for (int m = 0; m < 16; m++)
+				{
+					int a = tmp1.at<uchar>(l, m);
+					if (a == 255)
+						tmp3.at<uchar>(l, m) = (uchar)1;
+					else
+						tmp3.at<uchar>(l, m) = (uchar)0;
+				}
+			}
+			Mat tmp4;
+			tmp3.convertTo(tmp4, CV_32FC1);
+			train_data.push_back(tmp4.reshape(1, 1));
+			label_data.push_back(ch[t - 1]);
+		}
+		t++;
+	}
+	Mat label = label_data.reshape(1, 1),label2;
+	label.convertTo(label2,CV_32FC1);
+	FileStorage traindata("trainingdataforknn.yml", FileStorage::WRITE);
+	FileStorage labeldata("labeldataforknn.yml", FileStorage::WRITE);
+	traindata << "trainingdata" << train_data;
+	traindata.release();
+	labeldata << "labeldata" << label2;
+	labeldata.release();
+	waitKey(0);
+
+	return 0;
+}
+

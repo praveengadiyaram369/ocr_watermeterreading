@@ -1,0 +1,111 @@
+#include<iostream>
+#include<fstream>
+#include <opencv2/opencv.hpp>
+
+using namespace std;
+using namespace cv;
+
+int threshold_bin;
+void createtrackbars()
+{
+	namedWindow("trackwindow", CV_WINDOW_AUTOSIZE);
+
+	createTrackbar("threshold value", "trackwindow", &threshold_bin, 255);
+
+}
+
+int main()
+{
+	Mat img = imread("C:/Users/praveen_gadi/Pictures/ocrknn/watermeter.jpg"),img2,img3,img4,img5;
+	vector<Point> points;
+	cvtColor(img,img2,CV_BGR2GRAY);
+	threshold(img2, img3,32, 255, THRESH_BINARY);
+	//dilate(img3,img4,Mat(),Point(-1,-1),1);
+	bitwise_not(img3,img4);
+	for (int i = 0; i < img4.rows; i++)
+	{
+		for (int j = 0; j < img4.cols; j++)
+		{
+			if (img4.at<uchar>(i, j) != 0)
+				points.push_back(Point(i,j));
+		}
+	}
+	RotatedRect box = minAreaRect(points);
+	Mat after_rotation = getRotationMatrix2D(box.center, 4, 1),rotated;
+	warpAffine(img4,rotated,after_rotation,img4.size(),INTER_CUBIC);
+
+	bitwise_not(rotated,img5);
+
+	int i,j;
+	points.clear();
+	
+	int blob_start = 0;
+	Point point_start, point_end,blob_end;
+
+	for (i = 0; i < img5.cols; i++)
+	{
+		int count = 0;
+		
+		for (j = 0; j < img5.rows; j++)
+		{
+			if (img5.at<uchar>(j, i) == 0)
+			{
+				if (count == 0)
+					 point_start= {i-2,j-2};
+			
+				else
+					point_end = { i+1,j+1};
+
+				count++;
+				
+			}
+				
+		}
+		
+		if (count >55)
+		{
+			if (blob_start == 0)
+			{
+				points.push_back(point_start);
+				blob_start = 1;
+			}
+			else
+			{
+				blob_end = point_end;
+			}
+			
+		}
+		else
+		{
+			if (blob_start)
+			{
+				points.push_back(blob_end);
+				blob_start = 0;
+			}
+		}
+
+		cout << count << "\n";
+	}
+
+	
+
+	for (int i = 0; i < points.size(); i+=2)
+		rectangle(img5,points[i],points[i+1],Scalar(255),-1);
+
+	imwrite("C:/Users/praveen_gadi/Pictures/ocrknn/watermeter2.jpg",img5);
+	imshow("image", img);
+	imshow("image3", img3);
+	imshow("image4", img4);
+	imshow("image5", img5);
+	imshow("rotated", rotated);
+	
+	/*createtrackbars();
+	while (true)
+	{
+		
+		waitKey(10);
+	}*/
+	waitKey(0);
+	return 0;
+}
+
