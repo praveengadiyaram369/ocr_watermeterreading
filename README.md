@@ -1,7 +1,5 @@
 # ocr_watermeterreading
 
-/*
-
             ****  Software required :         1)opencv
                                         2)visual studio
 
@@ -18,6 +16,3 @@
 
             ****  copy watermeter_gaia.txt  to c++ file and change the directory to image of watermeter reading. 
 
-
-
-*/
