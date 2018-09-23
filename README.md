@@ -45,3 +45,13 @@
 
             ****  copy watermeter_gaia.txt  to c++ file and change the directory to image of watermeter reading. 
 
+
+=============================================================================================================================
+
+•	It is one of the solution of Internet of Things where there is a requirement to implement OCR through  Computer Vision to digitalize the data on Watermeter.<br>
+•	Implemented Region Growing Algorithm for the removal of Noise blobs and performed Noise reduction techniques like Dilation and Erosion.<br>
+•	Applied K-Nearest Neighbours(supervised) Algorithm for the classification of digits.
+
+==================================================================================================================
+
+
